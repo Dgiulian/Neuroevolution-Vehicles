@@ -3,14 +3,14 @@ class Particle {
     this.pos = createVector(start.x, start.y);
     this.vel = createVector();
     this.acc = createVector();
-    this.sight = SIGHT;
-    this.maxSpeed = 5;
-    this.maxForce = 0.1;
-    this.fitness = 0;
     this.rays = [];
+    this.maxSpeed = 4;
+    this.maxForce = 0.5;
+    this.sight = SIGHT;
     this.finished = false;
     this.dead = false;
     this.best = false;
+    this.fitness = 0;
     this.index = 0;
     this.counter = 0;
 
@@ -21,8 +21,8 @@ class Particle {
       this.brain = brain.copy();
     } else {
       this.brain = new NeuralNetwork(
-        this.rays.length + 2,
-        this.rays.length + 2,
+        this.rays.length,
+        this.rays.length,
         1
       );
     }
@@ -43,9 +43,9 @@ class Particle {
     rect(0, 0, 10, 5);
     pop();
     
-    if (DEBUG) {
+    if (DEBUG.boundary) {
       if (checkPoints[this.index]) checkPoints[this.index].show();
-      for (let ray of this.rays) ray.show();
+      // for (let ray of this.rays) ray.show();
     }
   }
   move(x, y) {
@@ -65,7 +65,6 @@ class Particle {
     this.counter++;
     if (this.counter > LIFESPAN) {
       this.dead = true;
-      console.log('Dead by snu snu');
     }
     for (let ray of this.rays) ray.rotate(this.vel.heading());
   }
@@ -85,12 +84,12 @@ class Particle {
           }
         }
       }
-      if (record < this.maxSpeed) {
+      if (record <= this.maxSpeed) {
         this.dead = true;
       }
       inputs[i] = map(record, 0, 50, 1, 0);
 
-      if (DEBUG && closest) {
+      if (DEBUG.ray && closest) {
         stroke(255, 100);
         line(this.pos.x, this.pos.y, closest.x, closest.y);
         noStroke();
@@ -99,13 +98,15 @@ class Particle {
         ellipse(closest.x, closest.y, 3);
       }
     }
-    const vel = this.vel.copy();
+/*     const vel = this.vel.copy();
     vel.normalize();
     inputs.push(vel.x);
-    inputs.push(vel.y);
+    inputs.push(vel.y); */
 
     const output = this.brain.predict(inputs);
-    const angle = map(output[0], 0, 1, 0, TWO_PI);
+    let angle = map(output[0], 0, 1, -PI, PI);
+    angle += this.vel.heading();
+
     const steering = p5.Vector.fromAngle(angle);
     steering.setMag(this.maxSpeed);
     steering.sub(this.vel);
@@ -118,24 +119,20 @@ class Particle {
     let d = pldistance(target.a, target.b, this.pos);
     if (d < 5) {
       this.index++;
+      this.fitness++;
       this.counter = 0;
     }
   }
   checkFinished(size) {
-    if (this.index === size) {
-      this.finished = true;
-    }
+    this.index = this.index % size;
+    /* if (this.index === size) {
+        this.finished = true;
+    } */
   }
   calculateFitness(target) {
     if (!this.finished) {
-      this.fitness = pow(this.index, 2);
+      this.fitness = pow(2,this.index);
     }
-    /* if (this.finished) {
-      this.fitness = 1;
-    } else {
-      const d = p5.Vector.dist(this.pos, target);
-      this.fitness = constrain(1 / d, 0, 1);
-    } */
   }
   mutate() {
     this.brain.mutate(MUTATION_RATE);
