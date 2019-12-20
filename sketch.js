@@ -12,8 +12,9 @@ let generationCount = 0;
 let speedSlider;
 let biggestIndex = 0;
 
-let walls = [];
-let checkPoints = [];
+
+
+let track;
 
 function setup() {
   createCanvas(window.innerWidth, window.innerHeight);
@@ -22,63 +23,25 @@ function setup() {
   speedSlider = createSlider(1, 50, 1);
   createTrack();
 
-  start = checkPoints[0].midpoint();
+  start = track.getStart();
   for (let i = 0; i < TOTAL; i++) {
     let p = new Particle();
     population.push(p);
   }
 }
 function createTrack() {
-  let noiseMax = 4;
-  
-  const pathwidth  = 40;
-  const inside = [];
-  const outside = [];
-  const startX = random(1000);
-  const startY = random(1000);
-  checkPoints = [];
-  walls =  [];
-  for (let i = 0; i < TOTAL_POINTS; i++) {
-    const a = map(i, 0, TOTAL_POINTS, 0, TWO_PI);
-    let xoff = map(cos(a), -1, 1, 0, noiseMax) + startX;
-    let yoff = map(sin(a), -1, 1, 0, noiseMax) + startY;
-    let r = map(noise(xoff, yoff), 0, 1, 80, height / 2 );
+  track = new Track();
+}
 
-    let x1 = width / 2 + (r + pathwidth) * cos(a);
-    let y1 = height / 2 + (r + pathwidth) * sin(a);
-    let x2 = width / 2 + (r - pathwidth) * cos(a);
-    let y2 = height / 2 + (r - pathwidth) * sin(a);
-    inside.push(createVector(x1, y1));
-    outside.push(createVector(x2, y2));
-    checkPoints.push(new Boundary(x1, y1, x2, y2));
-    
-  }
-  start = checkPoints[0].midpoint();
-  connectBoundaries(inside);
-  connectBoundaries(outside);
-  //checkPoints.pop();
-  const lastInside = inside[inside.length - 1];
-  const lastOutside = outside[inside.length - 1];
-/*   walls.push(
-    new Boundary(lastInside.x, lastInside.y, lastOutside.x, lastOutside.y)
-  ); */
-}
-function connectBoundaries(array) {
-  for (let i = 0; i < array.length; i++) {
-    let a = array[i];
-    let b = array[(i + 1) % array.length];
-    walls.push(new Boundary(a.x, a.y, b.x, b.y));
-  }
-}
 
 function draw() {
   background(0);
   const cycles = speedSlider.value();
   for (let n = 0; n < cycles; n++) {
     for (let p of population) {
-      p.look(walls);
-      p.check(checkPoints[p.index]);
-      p.checkFinished(checkPoints.length - 1);
+      p.look(track.walls);
+      p.check(track.getNext(p.index));
+      p.checkFinished(track.getSize());
       p.bounds();
       p.update();
     }
@@ -103,8 +66,8 @@ function draw() {
   fill(255, 0, 0);
   ellipse(start.x, start.y, 8);
 
-  for (let wall of walls) wall.show();
-//  for (let wall of checkPoints) wall.show();
+  track.show();
+
   let bestFitness = 0;
   let bestP = null;
   for (let p of population) {
@@ -119,7 +82,7 @@ function draw() {
   }
   if ( bestP) {
     bestP.best = DEBUG.best;
-    const next = checkPoints[bestP.index].midpoint();
+    const next = track.getNext(bestP.index).midpoint();
 
     if(DEBUG.next) ellipse(next.x, next.y, 8);
     bestP.show();
